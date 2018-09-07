@@ -42,12 +42,6 @@ from bpy.props import (
         CollectionProperty,
         )
 
-# Handlers functions
-
-def reset_tween(self):
-    if bpy.context.scene.tween_frame != bpy.context.scene.frame_current:
-        bpy.context.scene["tween"] = 0.5
-
 # Utility functions
 
 def refresh_ui_keyframes():
@@ -125,6 +119,7 @@ class Tween(bpy.types.Operator):
 
         elif event.type == 'LEFTMOUSE':
             context.scene.tween = self.tween
+            context.object.saved_tween = str(context.scene.frame_current) + ":" + str(self.tween)
             context.area.header_text_set()
             return {'FINISHED'}
 
@@ -132,6 +127,7 @@ class Tween(bpy.types.Operator):
             context.area.header_text_set()
             self.tween = self.init_tween
             context.scene.tween = self.init_tween
+            context.object.saved_tween = str(context.scene.frame_current) + ":" + str(self.init_tween)
             tween_key(self.init_tween, context)
             return {'CANCELLED'}
 
@@ -142,6 +138,15 @@ class Tween(bpy.types.Operator):
             self.help_string  = ', Confirm: (Enter/LMB)'
             self.help_string += ', Cancel: (Esc/RMB)'
             self.first_mouse_x = event.mouse_x
+            if context.object.get('saved_tween') is None:
+                print("None")
+                context.object.saved_tween = str(context.scene.frame_current) + ":0.5"
+                context.scene.tween = 0.5
+            else:
+                if int(context.object.saved_tween.split(":")[0]) == context.scene.frame_current:
+                    context.scene.tween = float(context.object.saved_tween.split(":")[1])
+                else:
+                    context.scene.tween = 0.5
             self.init_tween = context.scene.tween
             context.scene.tween_frame = context.scene.frame_current
             context.window_manager.modal_handler_add(self)
@@ -180,23 +185,18 @@ class VIEW3D_PT_Tween(Panel):
             return context.active_object.type
 
     def draw(self, context):
-        obj = context.active_object
-        
         layout = self.layout
         row = layout.row()
         row.prop(context.scene, "tween", slider=True)
         row = layout.row()
         row.operator("tween.tween_key", icon="KEY_HLT", text="Tween key")
 
-# Handlers
-
-bpy.app.handlers.frame_change_pre.append(reset_tween)
-
 addon_keymaps = []
 
 def register():
     bpy.utils.register_module(__name__)
     bpy.types.Scene.tween = FloatProperty(name="Tween", default=0.0, min=0, max=1.0, update=tween_key)
+    bpy.types.Object.saved_tween = StringProperty(name="Saved Tween")
     bpy.types.Scene.tween_location = BoolProperty(name="Tween location", default=True)
     bpy.types.Scene.tween_rotation = BoolProperty(name="Tween rotation", default=True)
     bpy.types.Scene.tween_scale = BoolProperty(name="Tween scale", default=True)
@@ -211,6 +211,7 @@ def register():
 def unregister():
     bpy.utils.unregister_module(__name__)
     del bpy.types.Scene.tween
+    del bpy.types.Object.saved_tween
     del bpy.types.Scene.tween_location 
     del bpy.types.Scene.tween_rotation 
     del bpy.types.Scene.tween_scale 
