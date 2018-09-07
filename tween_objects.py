@@ -60,27 +60,8 @@ def refresh_ui_keyframes():
     except:
         pass
     
-#def delete_key():
-#    try:
-#        for ob in bpy.context.selected_objects:
-#            if ob.type in ['MESH'] and ob.animation_data:
-#                for fc in ob.animation_data.action.fcurves:
-#                    if fc.data_path in ['location', 'rotation_quaternion', 'rotation_euler', 'scale']:
-#                       fc.keyframe_points.remove()
-#    except:
-#        pass
-    
-def tween_key(tween, context):
+def tween_key(self, context):
     current_frame = bpy.context.scene.frame_current
-    # TODO CollectionProperty
-    paths = []
-    if context.scene.tween_location:
-        paths.append('location')
-    if context.scene.tween_rotation:
-        paths.append('rotation_quaternion')
-        paths.append('rotation_euler')
-    if context.scene.tween_scale:
-        paths.append('scale')
     for ob in bpy.context.selected_objects:
         if ob.type in ['MESH'] and ob.animation_data:
             for fc in ob.animation_data.action.fcurves:
@@ -88,17 +69,20 @@ def tween_key(tween, context):
                 frame_after = 9999
                 before = 0
                 after = 0
-                if fc.data_path in paths:
-                    for key in fc.keyframe_points:
-                        if key.co[0] < current_frame:
-                            if key.co[0] > frame_before:
-                                frame_before = key.co[0]
-                                before = key.co[1]
-                        elif key.co[0] > current_frame:
-                            if key.co[0] < frame_after:
-                                frame_after = key.co[0]
-                                after = key.co[1]
-                    fc.keyframe_points.insert(current_frame, before * (1 - tween) + after * tween)
+                update_frame = False             
+                for key in fc.keyframe_points:
+                    if key.co[0] < current_frame:
+                        if key.co[0] > frame_before:
+                            frame_before = key.co[0]
+                            before = key.co[1]
+                    elif key.co[0] > current_frame:
+                        if key.co[0] < frame_after:
+                            frame_after = key.co[0]
+                            after = key.co[1]
+                    if key.co[0] == current_frame:
+                        update_frame = True
+                if update_frame:
+                    fc.keyframe_points.insert(current_frame, before * (1 - context.scene.tween) + after * context.scene.tween)
 
     refresh_ui_keyframes()
           
@@ -109,7 +93,7 @@ class Tween(bpy.types.Operator):
     bl_idname = "tween.tween_key"
     bl_label = "Tween"
     bl_description = "Tween between two keys"
-    bl_options = {"REGISTER"}
+    bl_options = {"REGISTER", "UNDO"}
     
     first_mouse_x = IntProperty()
     init_tween = FloatProperty()
@@ -146,7 +130,9 @@ class Tween(bpy.types.Operator):
 
         elif event.type in {'RIGHTMOUSE', 'ESC'}:
             context.area.header_text_set()
-            tween_key(self.tween, context)
+            self.tween = self.init_tween
+            context.scene.tween = self.init_tween
+            tween_key(self.init_tween, context)
             return {'CANCELLED'}
 
         return {'RUNNING_MODAL'}
@@ -197,19 +183,10 @@ class VIEW3D_PT_Tween(Panel):
         obj = context.active_object
         
         layout = self.layout
-        col = layout.column(align=True)
-        row = col.row()
-        row.prop(context.scene, "tween_location", text="Loc")
-        row.prop(context.scene, "tween_rotation", text="Rot")
-        row.prop(context.scene, "tween_scale", text="Sca")
-
         row = layout.row()
-        row.label("Tween value: %.4f" % context.scene.tween)
+        row.prop(context.scene, "tween", slider=True)
         row = layout.row()
         row.operator("tween.tween_key", icon="KEY_HLT", text="Tween key")
-#        row = layout.row()
-#        row.operator("tween.delete_key", icon="KEY_DEHLT", text="Delete key")
-
 
 # Handlers
 
@@ -219,7 +196,7 @@ addon_keymaps = []
 
 def register():
     bpy.utils.register_module(__name__)
-    bpy.types.Scene.tween = FloatProperty(name="Tween", default=0.0, min=0, max=1.0)
+    bpy.types.Scene.tween = FloatProperty(name="Tween", default=0.0, min=0, max=1.0, update=tween_key)
     bpy.types.Scene.tween_location = BoolProperty(name="Tween location", default=True)
     bpy.types.Scene.tween_rotation = BoolProperty(name="Tween rotation", default=True)
     bpy.types.Scene.tween_scale = BoolProperty(name="Tween scale", default=True)
