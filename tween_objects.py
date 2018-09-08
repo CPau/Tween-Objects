@@ -57,7 +57,7 @@ def refresh_ui_keyframes():
 def tween_key(self, context):
     current_frame = bpy.context.scene.frame_current
     for ob in bpy.context.selected_objects:
-        if ob.type in ['MESH'] and ob.animation_data:
+        if ob.type in ['MESH', 'ARMATURE'] and ob.animation_data:
             for fc in ob.animation_data.action.fcurves:
                 frame_before = 0
                 frame_after = 9999
@@ -73,7 +73,7 @@ def tween_key(self, context):
                         if key.co[0] < frame_after:
                             frame_after = key.co[0]
                             after = key.co[1]
-                    if key.co[0] == current_frame:
+                    if key.co[0] == current_frame or not context.scene.on_keyframes:
                         update_frame = True
                 if update_frame:
                     fc.keyframe_points.insert(current_frame, before * (1 - context.scene.tween) + after * context.scene.tween)
@@ -96,7 +96,7 @@ class Tween(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        if context.active_object and context.active_object.type in {'MESH'}:
+        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE'}:
             return context.active_object.type
 
     def modal(self, context, event):
@@ -154,22 +154,6 @@ class Tween(bpy.types.Operator):
         else:
             self.report({'WARNING'}, "No active object, could not finish")
             return {'CANCELLED'}
-    
-
-class DeleteKey(bpy.types.Operator):
-    bl_idname = "tween.delete_key"
-    bl_label = "Tween"
-    bl_description = "Delete key"
-    bl_options = {"REGISTER"}
-
-    @classmethod
-    def poll(cls, context):
-        if context.active_object and context.active_object.type in {'MESH'}:
-            return context.active_object.type
-
-    def execute(self, context):
-        delete_key()
-        return {"FINISHED"}
 
 # GUI (Panel)
 
@@ -181,15 +165,15 @@ class VIEW3D_PT_Tween(Panel):
 
     @classmethod
     def poll(self, context):
-        if context.active_object and context.active_object.type in {'MESH'}:
+        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE'}:
             return context.active_object.type
 
     def draw(self, context):
         layout = self.layout
         row = layout.row()
-        row.prop(context.scene, "tween", slider=True)
+        row.prop(context.scene, "on_keyframes")
         row = layout.row()
-        row.operator("tween.tween_key", icon="KEY_HLT", text="Tween key")
+        row.prop(context.scene, "tween", slider=True)
 
 addon_keymaps = []
 
@@ -197,24 +181,20 @@ def register():
     bpy.utils.register_module(__name__)
     bpy.types.Scene.tween = FloatProperty(name="Tween", default=0.0, min=0, max=1.0, update=tween_key)
     bpy.types.Object.saved_tween = StringProperty(name="Saved Tween")
-    bpy.types.Scene.tween_location = BoolProperty(name="Tween location", default=True)
-    bpy.types.Scene.tween_rotation = BoolProperty(name="Tween rotation", default=True)
-    bpy.types.Scene.tween_scale = BoolProperty(name="Tween scale", default=True)
+    bpy.types.Scene.on_keyframes = BoolProperty(name="Only on keyframes", default=False)
     bpy.types.Scene.tween_frame = IntProperty(name="Tween frame", default=0)
     wm = bpy.context.window_manager
     km = wm.keyconfigs.addon.keymaps.new(name='3D View', space_type='VIEW_3D')
     km.keymap_items.new(
         Tween.bl_idname,
-        'W', 'PRESS', alt=True, shift=False)
+        'W', 'PRESS', alt=True, shift=True)
     addon_keymaps.append(km)
 
 def unregister():
     bpy.utils.unregister_module(__name__)
     del bpy.types.Scene.tween
     del bpy.types.Object.saved_tween
-    del bpy.types.Scene.tween_location 
-    del bpy.types.Scene.tween_rotation 
-    del bpy.types.Scene.tween_scale 
+    del bpy.types.Scene.on_keyframes 
     del bpy.types.Scene.tween_frame
     wm = bpy.context.window_manager
     for km in addon_keymaps:

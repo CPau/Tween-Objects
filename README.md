@@ -1,10 +1,10 @@
 # Blender Tween Objects
 Control interpolation for objects in Blender to help breakdown animation.
 
-To be used on available keyframes at current frame.
+To be used on available curves keyframes at current frame for selected objects. (Armatures on test)
 
 * use slider, or:
-* `ALT` + `W` (temporary) or click the button to start the operator
+* `ALT` + `SHIFT` + `W` (temporary)
 * `CTRL` to snap to tenth
 * `SHIFT` for precision mode
 
