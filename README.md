@@ -1,7 +1,7 @@
-# Blender Tween Objects
+# Blender Tween
 Control interpolation for objects in Blender to help breakdown animation.
 
-To be used on available curves keyframes at current frame for selected objects. (Armatures on test)
+To be used on available curves keyframes at current frame for selected objects or selected bones.
 
 * use slider, or:
 * `ALT` + `SHIFT` + `W` (temporary)

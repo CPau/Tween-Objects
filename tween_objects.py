@@ -55,28 +55,54 @@ def refresh_ui_keyframes():
         pass
     
 def tween_key(self, context):
+    # TODO: Clean code duplication
     current_frame = bpy.context.scene.frame_current
     for ob in bpy.context.selected_objects:
         if ob.type in ['MESH', 'ARMATURE'] and ob.animation_data:
-            for fc in ob.animation_data.action.fcurves:
-                frame_before = 0
-                frame_after = 9999
-                before = 0
-                after = 0
-                update_frame = False             
-                for key in fc.keyframe_points:
-                    if key.co[0] < current_frame:
-                        if key.co[0] > frame_before:
-                            frame_before = key.co[0]
-                            before = key.co[1]
-                    elif key.co[0] > current_frame:
-                        if key.co[0] < frame_after:
-                            frame_after = key.co[0]
-                            after = key.co[1]
-                    if key.co[0] == current_frame or not context.scene.on_keyframes:
-                        update_frame = True
-                if update_frame:
-                    fc.keyframe_points.insert(current_frame, before * (1 - context.scene.tween) + after * context.scene.tween)
+            if ob.type in ['MESH']:
+                for fc in ob.animation_data.action.fcurves:
+                    frame_before = 0
+                    frame_after = 9999
+                    before = 0
+                    after = 0
+                    update_frame = False             
+                    for key in fc.keyframe_points:
+                        if key.co[0] < current_frame:
+                            if key.co[0] > frame_before:
+                                frame_before = key.co[0]
+                                before = key.co[1]
+                        elif key.co[0] > current_frame:
+                            if key.co[0] < frame_after:
+                                frame_after = key.co[0]
+                                after = key.co[1]
+                        if key.co[0] == current_frame or not context.scene.on_keyframes:
+                            update_frame = True
+                    if update_frame:
+                        fc.keyframe_points.insert(current_frame, before * (1 - context.scene.tween) + after * context.scene.tween)
+                        
+            if ob.type in ['ARMATURE']:
+                bone_names = [b.name for b in bpy.context.selected_pose_bones]
+                for fc in ob.animation_data.action.fcurves:
+                    if fc.data_path.split('"')[1] in bone_names:
+                        frame_before = 0
+                        frame_after = 9999
+                        before = 0
+                        after = 0
+                        update_frame = False             
+                        for key in fc.keyframe_points:
+                            if key.co[0] < current_frame:
+                                if key.co[0] > frame_before:
+                                    frame_before = key.co[0]
+                                    before = key.co[1]
+                            elif key.co[0] > current_frame:
+                                if key.co[0] < frame_after:
+                                    frame_after = key.co[0]
+                                    after = key.co[1]
+                            if key.co[0] == current_frame or not context.scene.on_keyframes:
+                                update_frame = True
+                        if update_frame:
+                            fc.keyframe_points.insert(current_frame, before * (1 - context.scene.tween) + after * context.scene.tween)
+                    
 
     refresh_ui_keyframes()
           
