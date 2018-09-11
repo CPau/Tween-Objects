@@ -58,8 +58,8 @@ def tween_key(self, context):
     # TODO: Clean code duplication
     current_frame = bpy.context.scene.frame_current
     for ob in bpy.context.selected_objects:
-        if ob.type in ['MESH', 'ARMATURE', 'EMPTY'] and ob.animation_data:
-            if ob.type in ['MESH', 'EMPTY']:
+        if ob.type in ['MESH', 'ARMATURE', 'EMPTY', 'CURVE'] and ob.animation_data:
+            if ob.type in ['MESH', 'EMPTY', 'CURVE']:
                 for fc in ob.animation_data.action.fcurves:
                     frame_before = 0
                     frame_after = 9999
@@ -122,7 +122,7 @@ class Tween(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE', 'EMPTY'}:
+        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE', 'EMPTY', 'CURVE'}:
             return context.active_object.type
 
     def modal(self, context, event):
@@ -191,7 +191,7 @@ class VIEW3D_PT_Tween(Panel):
 
     @classmethod
     def poll(self, context):
-        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE', 'EMPTY'}:
+        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE', 'EMPTY', 'CURVE'}:
             return context.active_object.type
 
     def draw(self, context):
