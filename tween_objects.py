@@ -20,9 +20,9 @@ bl_info = {
     "name": "Tween Objects",
     "author": "Duy Kevin Nguyen <cpau3D@gmail.com>",
     "version": (0, 0, 1),
-    "blender": (2, 79),
-    "location": "Tool bar > Animation tab > Tween",
-    "description": "Allows to blend keyframes for in between",
+    "blender": (2, 80, 0),
+    "location": "UI > Anim > Tween",
+    "description": "Allows to blend keyframes for in between. Compatible with 2.79",
     "warning": "",
     "wiki_url": "",
     "category": "Animation",
@@ -44,28 +44,17 @@ from bpy.props import (
 
 # Utility functions
 
-def refresh_ui_keyframes():
-    try:
-        bpy.context.scene.frame_set(bpy.context.scene.frame_current)
-        for area in bpy.context.screen.areas:
-            if area.type in ('TIMELINE', 'GRAPH_EDITOR', 'DOPESHEET_EDITOR', 'VIEW_3D'):
-                area.tag_redraw()
-        bpy.context.scene.update()
-    except:
-        pass
-    
 def tween_key(self, context):
-    # TODO: Clean code duplication
     current_frame = bpy.context.scene.frame_current
     for ob in bpy.context.selected_objects:
-        if ob.type in ['MESH', 'ARMATURE', 'EMPTY', 'CURVE'] and ob.animation_data:
-            if ob.type in ['MESH', 'EMPTY', 'CURVE']:
+        if ob.type in ['MESH', 'ARMATURE', 'EMPTY', 'CURVE', 'CAMERA'] and ob.animation_data:
+            if ob.type in ['MESH', 'EMPTY', 'CURVE', 'CAMERA']:
                 for fc in ob.animation_data.action.fcurves:
                     frame_before = 0
                     frame_after = 9999
                     before = 0
                     after = 0
-                    update_frame = False             
+                    update_frame = False
                     for key in fc.keyframe_points:
                         if key.co[0] < current_frame:
                             if key.co[0] > frame_before:
@@ -79,7 +68,7 @@ def tween_key(self, context):
                             update_frame = True
                     if update_frame:
                         fc.keyframe_points.insert(current_frame, before * (1 - context.scene.tween) + after * context.scene.tween)
-                        
+
             if ob.type in ['ARMATURE']:
                 bone_names = [b.name for b in bpy.context.selected_pose_bones]
                 for fc in ob.animation_data.action.fcurves:
@@ -88,7 +77,7 @@ def tween_key(self, context):
                         frame_after = 9999
                         before = 0
                         after = 0
-                        update_frame = False             
+                        update_frame = False
                         for key in fc.keyframe_points:
                             if key.co[0] < current_frame:
                                 if key.co[0] > frame_before:
@@ -102,10 +91,10 @@ def tween_key(self, context):
                                 update_frame = True
                         if update_frame:
                             fc.keyframe_points.insert(current_frame, before * (1 - context.scene.tween) + after * context.scene.tween)
-                    
 
-    refresh_ui_keyframes()
-          
+    if bpy.app.version < (2,80,0):
+            bpy.context.scene.frame_set(bpy.context.scene.frame_current)
+
 # Operators
 
 class Tween(bpy.types.Operator):
@@ -114,20 +103,20 @@ class Tween(bpy.types.Operator):
     bl_label = "Tween"
     bl_description = "Tween between two keys"
     bl_options = {"REGISTER", "UNDO"}
-    
+
     first_mouse_x = IntProperty()
     init_tween = FloatProperty()
     tween = FloatProperty()
     help_string = StringProperty()
-    
+
     @classmethod
     def poll(cls, context):
-        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE', 'EMPTY', 'CURVE'}:
+        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE', 'EMPTY', 'CURVE', 'CAMERA'}:
             return context.active_object.type
 
     def modal(self, context, event):
         if event.type == 'MOUSEMOVE':
-            # TODO : improve screen size and shift
+            # TODO: improve screen size and shift
             # Precision mode
             if event.shift:
                 rapport = 1600
@@ -146,11 +135,11 @@ class Tween(bpy.types.Operator):
         elif event.type == 'LEFTMOUSE':
             context.scene.tween = self.tween
             context.object.saved_tween = str(context.scene.frame_current) + ":" + str(self.tween)
-            context.area.header_text_set()
+            context.area.header_text_set("Tween: %.4f" % self.tween)
             return {'FINISHED'}
 
         elif event.type in {'RIGHTMOUSE', 'ESC'}:
-            context.area.header_text_set()
+            context.area.header_text_set("")
             self.tween = self.init_tween
             context.scene.tween = self.init_tween
             context.object.saved_tween = str(context.scene.frame_current) + ":" + str(self.init_tween)
@@ -158,7 +147,7 @@ class Tween(bpy.types.Operator):
             return {'CANCELLED'}
 
         return {'RUNNING_MODAL'}
-    
+
     def invoke(self, context, event):
         if context.object:
             self.help_string  = ', Confirm: (Enter/LMB)'
@@ -183,15 +172,20 @@ class Tween(bpy.types.Operator):
 
 # GUI (Panel)
 
+if bpy.app.version < (2,80,0):
+    Region = "TOOLS"
+else:
+    Region = "UI"
+
 class VIEW3D_PT_Tween(Panel):
     bl_space_type = 'VIEW_3D'
-    bl_region_type = 'TOOLS'
-    bl_category = "Animation"
+    bl_region_type = Region
+    bl_category = "Anim"
     bl_label = 'Tween'
 
     @classmethod
     def poll(self, context):
-        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE', 'EMPTY', 'CURVE'}:
+        if context.active_object and context.active_object.type in {'MESH', 'ARMATURE', 'EMPTY', 'CURVE', 'CAMERA'}:
             return context.active_object.type
 
     def draw(self, context):
@@ -204,7 +198,8 @@ class VIEW3D_PT_Tween(Panel):
 addon_keymaps = []
 
 def register():
-    bpy.utils.register_module(__name__)
+    bpy.utils.register_class(Tween)
+    bpy.utils.register_class(VIEW3D_PT_Tween)
     bpy.types.Scene.tween = FloatProperty(name="Tween", default=0.0, min=0, max=1.0, update=tween_key)
     bpy.types.Object.saved_tween = StringProperty(name="Saved Tween")
     bpy.types.Scene.on_keyframes = BoolProperty(name="Only on keyframes", default=False)
@@ -217,10 +212,11 @@ def register():
     addon_keymaps.append(km)
 
 def unregister():
-    bpy.utils.unregister_module(__name__)
+    bpy.utils.unregister_class(Tween)
+    bpy.utils.unregister_class(VIEW3D_PT_Tween)
     del bpy.types.Scene.tween
     del bpy.types.Object.saved_tween
-    del bpy.types.Scene.on_keyframes 
+    del bpy.types.Scene.on_keyframes
     del bpy.types.Scene.tween_frame
     wm = bpy.context.window_manager
     for km in addon_keymaps:
