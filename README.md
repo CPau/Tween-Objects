@@ -1,4 +1,4 @@
-# Blender Tween
+# Tween Objects for Blender 2.79 and 2.8
 Control interpolation for objects in Blender to help breakdown animation.
 
 To be used on available curves keyframes at current frame for selected objects or selected bones.
